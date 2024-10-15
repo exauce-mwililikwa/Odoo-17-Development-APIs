@@ -73,3 +73,20 @@ class PropertyApi(http.Controller):
             return request.make_json_response({
                 "message": error,
             })
+
+    @http.route('/v1/property/<int:property_id>', methods=["DELETE"], type="http", auth="none", csrf=False)
+    def delete_property(self, property_id):
+        try:
+            property_id=request.env['estate.property'].sudo().search([('id','=',property_id)])
+            if not property_id:
+                return request.make_json_response({
+                    "error":"ID does not exist!",
+                },status=400)
+            property_id.unlink()
+            return request.make_json_response({
+                "id":"Property has been deleted",
+            }, status=200)
+        except Exception as error:
+            return request.make_json_response({
+                "id": error,
+            }, status=400)
