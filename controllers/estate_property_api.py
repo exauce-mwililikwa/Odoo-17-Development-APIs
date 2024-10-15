@@ -2,9 +2,15 @@ import json
 
 from odoo import http, _
 from odoo.http import request
-
+def valid_response(data, status):
+    response_body={
+        'message':'Success',
+        'data':data
+    }
+    return request.make_json_response(response_body, status=status)
 
 class PropertyApi(http.Controller):
+
     @http.route('/v1/property', methods=["POST"], type="http", auth="none", csrf=False)
     def post_property(self):
         args = request.httprequest.data.decode()
@@ -90,3 +96,22 @@ class PropertyApi(http.Controller):
             return request.make_json_response({
                 "id": error,
             }, status=400)
+
+    @http.route('/v1/properties', methods=["GET"], type="http", auth="none", csrf=False)
+    def get_properties_list(self):
+        try:
+            properties_ids = request.env['estate.property'].sudo().search([])
+            if not properties_ids:
+                return request.make_json_response({
+                    "message": "There are not records!"
+                }, status=400)
+            return valid_response([{
+                "id": property_id.id,
+                "quantity": property_id.quantity,
+                "unit_price": property_id.unit_price,
+                "name": property_id.name
+            } for property_id in properties_ids], status=200)
+        except Exception as error:
+            return request.make_json_response({
+                "message": error,
+            })
