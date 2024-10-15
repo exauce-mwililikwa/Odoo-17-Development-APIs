@@ -100,18 +100,36 @@ class PropertyApi(http.Controller):
     @http.route('/v1/properties', methods=["GET"], type="http", auth="none", csrf=False)
     def get_properties_list(self):
         try:
-            properties_ids = request.env['estate.property'].sudo().search([])
+            # Récupérer les paramètres de pagination depuis la requête
+            page = int(request.httprequest.args.get('page', 1))  # Page par défaut = 1
+            limit = int(request.httprequest.args.get('limit', 10))  # Limite par défaut = 10
+
+            # Calculer l'offset
+            offset = (page - 1) * limit
+
+            # Récupérer les propriétés avec pagination
+            properties_ids = request.env['estate.property'].sudo().search([], offset=offset, limit=limit)
+            total_properties = request.env['estate.property'].sudo().search_count([])  # Nombre total d'enregistrements
+
             if not properties_ids:
                 return request.make_json_response({
-                    "message": "There are not records!"
-                }, status=400)
-            return valid_response([{
-                "id": property_id.id,
-                "quantity": property_id.quantity,
-                "unit_price": property_id.unit_price,
-                "name": property_id.name
-            } for property_id in properties_ids], status=200)
+                    "message": "There are no records!"
+                }, status=404)
+
+            # Retourner les propriétés avec le total et la pagination
+            return valid_response({
+                "total": total_properties,
+                "page": page,
+                "limit": limit,
+                "properties": [{
+                    "id": property_id.id,
+                    "quantity": property_id.quantity,
+                    "unit_price": property_id.unit_price,
+                    "name": property_id.name
+                } for property_id in properties_ids]
+            }, status=200)
+
         except Exception as error:
             return request.make_json_response({
-                "message": error,
-            })
+                "message": str(error),
+            }, status=400)
