@@ -2,6 +2,20 @@ import json
 
 from odoo import http, _
 from odoo.http import request
+
+def get_user_from_token(token):
+    token_record = request.env['auth.token'].sudo().search([('token', '=', token)], limit=1)
+    return token_record.user_id if token_record else None
+
+def authenticate_request():
+    token = request.httprequest.headers.get('Authorization')
+    if token and token.startswith('Bearer '):
+        token = token.split(' ')[1]
+        user = get_user_from_token(token)
+        if user:
+            return user
+    return None
+
 def valid_response(data, status):
     response_body={
         'message':'Success',
@@ -97,9 +111,15 @@ class PropertyApi(http.Controller):
                 "id": error,
             }, status=400)
 
-    @http.route('/v1/properties', methods=["GET"], type="http", auth="none", csrf=False)
+    @http.route('/v1/properties', methods=["GET"], type="http", auth="user", csrf=False)
     def get_properties_list(self):
         try:
+            user = authenticate_request()
+            if not user:
+                return request.make_json_response({
+                    "message": "Unauthorized"
+                }, status=401)
+
             # Récupérer les paramètres de pagination depuis la requête
             page = int(request.httprequest.args.get('page', 1))  # Page par défaut = 1
             limit = int(request.httprequest.args.get('limit', 10))  # Limite par défaut = 10
@@ -108,8 +128,8 @@ class PropertyApi(http.Controller):
             offset = (page - 1) * limit
 
             # Récupérer les propriétés avec pagination
-            properties_ids = request.env['estate.property'].sudo().search([], offset=offset, limit=limit)
-            total_properties = request.env['estate.property'].sudo().search_count([])  # Nombre total d'enregistrements
+            properties_ids = request.env['estate.property'].search([], offset=offset, limit=limit)
+            total_properties = request.env['estate.property'].search_count([])  # Nombre total d'enregistrements
 
             if not properties_ids:
                 return request.make_json_response({

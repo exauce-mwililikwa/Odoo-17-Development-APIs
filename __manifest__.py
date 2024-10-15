@@ -22,6 +22,11 @@
     'depends': [
         'base',
     ],
+    'data': [
+        'security/ir.model.access.csv',
+        'security/groups.xml',
+        # Ajoute le fichier de sécurité ici
+    ],
 
     # always loaded
 
