@@ -1,10 +1,9 @@
 import json
-
 from odoo import http, _
 from odoo.http import request
 
 def get_user_from_token(token):
-    token_record = request.env['auth.token'].sudo().search([('token', '=', token)], limit=1)
+    token_record = request.env['auth.token'].sudo().search([('token', '=', token)])
     return token_record.user_id if token_record else None
 
 def authenticate_request():
@@ -13,7 +12,10 @@ def authenticate_request():
         token = token.split(' ')[1]
         user = get_user_from_token(token)
         if user:
+            print(user)
             return user
+        return None
+    print("pas de token")
     return None
 
 def valid_response(data, status):
@@ -153,3 +155,19 @@ class PropertyApi(http.Controller):
             return request.make_json_response({
                 "message": str(error),
             }, status=400)
+
+    @http.route('/v1/auth/logout', methods=["POST"], type="http", auth="user", csrf=False)
+    def logout(self):
+        user = authenticate_request()
+        if user is None:
+            return request.make_json_response({
+                "message": "Unauthorized"
+            }, status=401)
+        else:
+            token = request.httprequest.headers.get('Authorization')
+            auth_token = request.env['auth.token'].sudo().search([('token', '=', token.split(' ')[1])])
+            auth_token.sudo().unlink()
+            request.session.logout()
+            return request.make_json_response({
+                "message": "Logout successful"
+            }, status=200)
